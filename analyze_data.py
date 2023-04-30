@@ -59,7 +59,7 @@ def normalize_string(s):
 def strings_in_info(df):
     def check_strings(row):
         normalized_info = normalize_string(row['info'])
-        normalized_string_list = [normalize_string(s) for s in row['named_entitites']]
+        normalized_string_list = [normalize_string(s) for s in row['named_entities']]
 
         # Get the strings in the list that are not present in the 'info' column
         missing_strings = [s for s in normalized_string_list if s not in normalized_info]
@@ -75,7 +75,7 @@ def strings_in_info(df):
 
 def count_items(df):
     counter = Counter()
-    for row in df['named_entitites']:
+    for row in df['named_entities']:
         counter.update([s for s in row])
     return(counter)
 
@@ -130,30 +130,30 @@ def main():
 
     df['clean_named_entities'] = df['named_entities'].apply(clean_initial_string)
     df['clean_named_entities_list'] = df['clean_named_entities'].str.split(",")
-    df['named_entitites'] = df['clean_named_entities_list'].apply(process_strings)
+    df['named_entities'] = df['clean_named_entities_list'].apply(process_strings)
 
-    df['named_entitites'] = df['named_entitites'].apply(remove_duplicates)
+    df['named_entities'] = df['named_entities'].apply(remove_duplicates)
     df = strings_in_info(df)
 
     counter = count_items(df)
     top_8 = [item[0] for item in counter.most_common(8)]
 
-    df['missing_items'] = df['named_entitites'].apply(lambda row: find_missing_substrings(top_8, row))
+    df['missing_items'] = df['named_entities'].apply(lambda row: find_missing_substrings(top_8, row))
     df['actually_missing'] = df.apply(lambda row: find_actually_missing(row['missing_items'], row['info']), axis=1)
 
     # Drop the intermediate columns
     df.drop(columns=['clean_named_entities', 'clean_named_entities_list', 'missing_strings', 'missing_items', 'actually_missing'], inplace=True)
 
-    # Calculate the median length of the 'named_entitites' list for the subset where "Python" is one of the lists of strings
-    python_subset = df[df['named_entitites'].apply(lambda x: 'Python' in x)]
-    median_length = python_subset['named_entitites'].apply(len).median()
-    print(f"The median length of the 'named_entitites' list for the subset with 'Python': {median_length}")
+    # Calculate the median length of the 'named_entities' list for the subset where "Python" is one of the lists of strings
+    python_subset = df[df['named_entities'].apply(lambda x: 'Python' in x)]
+    median_length = python_subset['named_entities'].apply(len).median()
+    print(f"The median length of the 'named_entities' list for the subset with 'Python': {median_length}")
 
-    # Find the maximum number of strings in the 'named_entitites' list and the corresponding PositionURI values
-    max_strings = df['named_entitites'].apply(len).max()
-    max_strings_rows = df[df['named_entitites'].apply(len) == max_strings]
+    # Find the maximum number of strings in the 'named_entities' list and the corresponding PositionURI values
+    max_strings = df['named_entities'].apply(len).max()
+    max_strings_rows = df[df['named_entities'].apply(len) == max_strings]
     position_uris = max_strings_rows['PositionURI'].tolist()
-    print(f"The maximum number of strings in the 'named_entitites' list is {max_strings}.")
+    print(f"The maximum number of strings in the 'named_entities' list is {max_strings}.")
     print(f"The PositionURI values for rows with the maximum number of strings: {', '.join(position_uris)}")
 
     save_wordcloud(counter)
