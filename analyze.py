@@ -116,11 +116,14 @@ def save_wordcloud(counter):
     # Generate the word cloud using the frequencies
     wordcloud.generate_from_frequencies(counter)
 
-    # Save the word cloud
+    # Save the word cloud with minimal padding
+    plt.figure(figsize=(15, 16), dpi=300)
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis('off')
+    plt.tight_layout(pad=0)
     plt.savefig('wordcloud.png', dpi=300)  # Increase the DPI for higher text fidelity
     plt.show()
+
 
 def main():
     df = pd.read_pickle("../data/entity_recognition.pkl")
