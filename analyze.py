@@ -14,21 +14,20 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 
 
-df=pd.read_pickle("../data/entity_recognition.pkl")
-
-
-def gen_Drop_List():
-    drop_these=["Software tools:", "Programming languages:", "Software tools and programming languages:", 
-                "None mentioned", "None identified", "None", "USAJobs", "language codes",
-                "in the text.", ".", "and",  'explicitly mentioned',  'explicitly']
+def gen_drop_list():
+    drop_these = ["Software tools:", "Programming languages:",
+                  "Software tools and programming languages:",
+                  "None mentioned", "None identified", "None",
+                  "USAJobs", "language codes", "in the text.", ".", "and",
+                  'explicitly mentioned', 'explicitly']
     return(drop_these)
 
-def cleanInitiaString(string):
-    drop_List=gen_Drop_List()
-    for i in drop_List:
-        string=string.replace(i," ")
-    return(string)
 
+def clean_initial_string(s):
+    drop_list = gen_drop_list()
+    for i in drop_list:
+        s = s.replace(i, " ")
+    return s
 
 
 def process_strings(string_list):
@@ -50,12 +49,12 @@ def process_strings(string_list):
     return processed_strings
 
 
-
 def normalize_string(s):
     s = s.lower()  # Convert to lowercase
     s = re.sub(f'[{string.punctuation}]', '', s)  # Remove punctuation
     s = re.sub(r'\s+', ' ', s).strip()  # Replace multiple spaces with a single space and remove leading/trailing spaces
     return s
+
 
 def strings_in_info(df):
     def check_strings(row):
@@ -73,11 +72,13 @@ def strings_in_info(df):
 
     return df
 
-def count_Items(df):
+
+def count_items(df):
     counter = Counter()
     for row in df['more_clean']:
-        counter.update([s for s in row if (s != '') & (s !="R") & (s !="Excel")])
+        counter.update([s for s in row if (s != '') & (s != "R") & (s != "Excel")])
     return(counter)
+
 
 def find_missing_substrings(top_5, new_list):
     missing_items = []
@@ -92,7 +93,6 @@ def find_missing_substrings(top_5, new_list):
     return missing_items
 
 
-
 def find_actually_missing(missing_items, info):
     actually_missing = []
     for item in missing_items:
@@ -100,58 +100,62 @@ def find_actually_missing(missing_items, info):
             actually_missing.append(item)
     return actually_missing
 
-def count_items(item_list):
-    return len(item_list)
 
 def remove_duplicates(item_list):
     return list(set(item_list))
 
 
+def save_wordcloud(counter):
+    # Replace empty lists with the string 'None'
+    counter['None'] = counter.get('', 0)
+    del counter['']
 
-df['clean_named_entities']=df['named_entities'].apply(cleanInitiaString)
-df['clean_named_entities_list']=df['clean_named_entities'].str.split(",")
-df['more_clean']=df['clean_named_entities_list'].apply(process_strings)
+    # Create the word cloud object
+    wordcloud = WordCloud(width=1500, height=1600, background_color='white', colormap='viridis')
 
-df['more_clean'] = df['more_clean'].apply(remove_duplicates)
-df = strings_in_info(df)
+    # Generate the word cloud using the frequencies
+    wordcloud.generate_from_frequencies(counter)
 
-counter=count_Items(df)
-top_5 = counter.most_common(5)
+    # Save the word cloud
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.savefig('wordcloud.png', dpi=300)  # Increase the DPI for higher text fidelity
+    plt.show()
 
-# Get the top 5 most frequent strings
-top_5 = [item[0] for item in counter.most_common(5)]
+def main():
+    df = pd.read_pickle("../data/entity_recognition.pkl")
 
-df['missing_items'] = df['more_clean'].apply(lambda row: find_missing_substrings(top_5, row))
-df['actually_missing'] = df.apply(lambda row: find_actually_missing(row['missing_items'], row['info']), axis=1)
+    df['clean_named_entities'] = df['named_entities'].apply(clean_initial_string)
+    df['clean_named_entities_list'] = df['clean_named_entities'].str.split(",")
+    df['more_clean'] = df['clean_named_entities_list'].apply(process_strings)
 
-df_python=df.loc[df['more_clean'].astype(str).str.contains("Python")]
+    df['more_clean'] = df['more_clean'].apply(remove_duplicates)
+    df = strings_in_info(df)
 
-df_python['item_count'] = df_python['more_clean'].apply(count_items)
+    counter = count_items(df)
+    top_5 = [item[0] for item in counter.most_common(5)]
 
-df_docker=df.loc[df['more_clean'].astype(str).str.contains("Docker")]
+    df['missing_items'] = df['more_clean'].apply(lambda row: find_missing_substrings(top_5, row))
+    df['actually_missing'] = df.apply(lambda row: find_actually_missing(row['missing_items'], row['info']), axis=1)
 
+    # Drop the intermediate columns
+    df.drop(columns=['clean_named_entities', 'clean_named_entities_list', 'missing_strings', 'missing_items', 'actually_missing'], inplace=True)
 
+    # Calculate the median length of the 'more_clean' list for the subset where "Python" is one of the lists of strings
+    python_subset = df[df['more_clean'].apply(lambda x: 'Python' in x)]
+    median_length = python_subset['more_clean'].apply(len).median()
+    print(f"The median length of the 'more_clean' list for the subset with 'Python': {median_length}")
 
-# Replace empty lists with a list containing the string 'none'
-data = df['more_clean'].apply(lambda x: ['none'] if len(x) == 0 or (len(x) == 1 and x[0] == '') else x)
+    # Find the maximum number of strings in the 'more_clean' list and the corresponding PositionURI values
+    max_strings = df['more_clean'].apply(len).max()
+    max_strings_rows = df[df['more_clean'].apply(len) == max_strings]
+    position_uris = max_strings_rows['PositionURI'].tolist()
+    print(f"The maximum number of strings in the 'more_clean' list is {max_strings}.")
+    print(f"The PositionURI values for rows with the maximum number of strings: {', '.join(position_uris)}")
 
-# Flatten the list of lists to a single list
-flattened_data = list(chain.from_iterable(data))
+    save_wordcloud(counter)
+    return(df)
 
-# Count the occurrences of each unique string
-string_counts = Counter(flattened_data)
+if __name__ == "__main__":
+    df=main()
 
-print(string_counts)
-
-# Create the word cloud object
-wordcloud = WordCloud(width=1500, height=1600, background_color='white', colormap='viridis')
-
-# Generate the word cloud using the frequencies
-wordcloud.generate_from_frequencies(string_counts)
-
-# Display the word cloud
-plt.imshow(wordcloud, interpolation='bilinear')
-plt.axis('off')
-plt.savefig('wordcloud.png', dpi=300)  # Increase the DPI for higher text fidelity
-
-plt.show()
