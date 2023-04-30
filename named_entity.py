@@ -90,7 +90,4 @@ def main():
 if __name__ == "__main__":
     cleaned_for_app=main()
     
-blanks=cleaned_for_app.loc[cleaned_for_app['named_entities']==""]
-print(len(blanks))
 
-ways_of_saying_none=[""]
