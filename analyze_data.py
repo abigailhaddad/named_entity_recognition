@@ -12,7 +12,16 @@ from collections import Counter
 from itertools import chain
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import spacy
+nlp = spacy.load("en_core_web_lg")
 
+def applySpacy(text):
+    items=[]
+    doc = nlp(text)
+    for ent in doc.ents:
+        items.append([ent.label_, ent.text])
+    return(items)
+    
 
 def gen_drop_list():
     drop_these = ["Software tools:", "Programming languages:",
@@ -157,8 +166,12 @@ def main():
     print(f"The PositionURI values for rows with the maximum number of strings: {', '.join(position_uris)}")
 
     save_wordcloud(counter)
+    df['spacy_entities']=df['info'].apply(applySpacy)
     return(df)
+
+
 
 if __name__ == "__main__":
     df=main()
+    df.to_excel("ner_results.xlsx")
 
