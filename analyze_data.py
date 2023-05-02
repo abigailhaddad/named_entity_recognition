@@ -173,5 +173,8 @@ def main():
 
 if __name__ == "__main__":
     df=main()
-    df.to_excel("ner_results.xlsx")
+    colsToKeep=['PositionTitle', 'PositionURI', 'OrganizationName', 
+                'DepartmentName', 'info', 'named_entities', 'spacy_entities']
+    df[colsToKeep].to_excel("ner_results.xlsx", index=False)
+
 
