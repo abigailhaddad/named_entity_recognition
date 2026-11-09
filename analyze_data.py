@@ -35,7 +35,12 @@ def gen_drop_list():
 def clean_initial_string(s):
     drop_list = gen_drop_list()
     for i in drop_list:
-        s = s.replace(i, " ")
+        if i == ".":
+            # only a trailing or standalone period, so "Node.js" / "ASP.NET" survive
+            s = re.sub(r"\.(?!\w)", " ", s)
+        else:
+            # whole words/phrases only, so "and" does not eat "Pandas" or "Standards"
+            s = re.sub(r"(?<!\w)" + re.escape(i) + r"(?!\w)", " ", s)
     return s
 
 
